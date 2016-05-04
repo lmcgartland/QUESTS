@@ -1,0 +1,229 @@
+<html>
+<head>
+	<title>Streamgraph</title>
+	<script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script src="/static/jQRangeSlider-5.7.2/jQDateRangeSlider-min.js" charset="utf-8"></script>
+	<script src="/static/jQRangeSlider-5.7.2/lib/jquery.mousewheel.min.js"></script>
+
+
+	<link rel="stylesheet" type="text/css" href="/static/jQRangeSlider-5.7.2/css/iThing.css">
+	<link rel="stylesheet" type="text/css" href="/static/jquery-ui.css">
+	<link rel="stylesheet" type="text/css" href="/static/plots.css">
+
+</head>
+<body>
+    <!--{% block content %}
+    {% endblock %}-->
+    <div class="title-container">STEPS vs CALORIES</div>
+    <div class="plot-container"></div>
+    <div class="controls-container">
+    	<div id="date-slider"></div>
+    	<div id="other-controls">
+    		<input type="text" placeholder="Activity 1" class="focus-style" id="activity1" value="Steps">
+<input type="text" placeholder="Activity 2" class="focus-style" id="activity2" value="Calories">
+<button class="focus-style" style="" onclick="formToScatterplot()">></button>
+    	</div>
+    </div>
+    <script type="text/javascript">
+	var layers0holder;
+	var layers1holder;
+		function returnData(d, activities, number){
+			var value = d[activities[number]];
+			if (value == undefined || isNaN(value) || value == ""){
+				value = 0;
+			}
+			return parseFloat(value);
+		}
+		function createScatterplot(data, activities){
+			if ($(".svg-container").length){
+	  			$(".svg-container").remove();
+	  		}
+
+			$(".title-container").html(activities[1]+"<span class='lighter-text'> vs </span>"+activities[2]);
+
+
+			var margin = {top: 20, right: 20, bottom: 30, left: 50},
+			width = $(window).width() - margin.left - margin.right,
+			height = $(window).height()*.8- margin.top - margin.bottom;
+
+			var xValue = function(d) { return returnData(d, activities, 1);}, // data -> value
+			    xScale = d3.scale.linear().range([0, width]), // value -> display
+			    xMap = function(d) { return xScale(xValue(d));}, // data -> display
+			    xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+
+			// setup y
+			var yValue = function(d) { return returnData(d, activities, 2);}, // data -> value
+			    yScale = d3.scale.linear().range([height, 0]), // value -> display
+			    yMap = function(d) { return yScale(yValue(d));}, // data -> display
+			    yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+			var dateValue = function(d) { return d[activities[0]];}; // data -> value
+
+			// setup fill color
+			var cValue = function(d) { return d.Manufacturer;},
+			color = d3.scale.category10();
+			for (var i = data.length - 1; i >= 0; i--) {
+			//console.log();
+				if (dateValue(data[i])==undefined){
+					data.splice(i, 1);
+				}
+			}
+
+			var n = 1, // number of layers
+			    m = 200, // number of samples per layer
+			    stack = d3.layout.stack().offset("wiggle"),
+			    layers0 = stack(d3.range(n).map(function() { return data; })),
+			    layers1 = stack(d3.range(n).map(function() { return data; }));
+
+			console.log(layers1);
+			console.log(data);
+
+			var x = d3.scale.linear()
+			    .domain([0, m - 1])
+			    .range([0, width]);
+
+			var y = d3.scale.linear()
+			    .domain([0, d3.max(layers0.concat(layers1), function(layer) { return d3.max(layer, function(d) { return 1 + yValue(d); }); })])
+			    .range([height, 0]);
+
+			xScale.domain([d3.min(data, xValue), d3.max(data, xValue)]);
+			yScale.domain([d3.min(data, yValue), d3.max(data, yValue)]);
+
+			for (var i = data.length - 1; i >= 0; i--) {
+				console.log(y(yValue(data[i])));
+				
+			}
+			var color = d3.scale.linear()
+			    .range(["#aad", "#556"]);
+
+			var area = d3.svg.area()
+			    .x(function(d) { return x(xValue(d)); })
+			    .y0(function(d) { return y(yValue(d)); })
+			    .y1(function(d) { return y(1 + yValue(d)); });
+
+			var svg = d3.select(".plot-container")
+				.append("div")
+				.classed("svg-container", true) //container class to make it responsive
+				.append("svg")
+			   	.attr("width", width)
+			   	.attr("height", height);
+
+			svg.selectAll("path")
+			    .data(layers0)
+			  .enter().append("path")
+			    .attr("d", area)
+			    .style("fill", function() { return color(Math.random()); });
+
+			
+		      	
+		}
+		function getData(end, period, activities, callback){
+			$.ajaxSettings.traditional = true;
+			$.ajax({
+				url: "../snippets/",
+				data: {
+					end: end,
+					period: period,
+					activity: activities,
+
+				},
+				success: function( data ) {
+					if (data[0]=={}){
+						data[0].splice(0, 1)
+					}
+					callback(data, activities);
+				}
+			});
+		}
+		function formToScatterplot(){
+			
+			var dateValues = $("#date-slider").dateRangeSlider("values");
+			var end = formatDate(dateValues.max);
+			var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
+			var period = Math.round(Math.abs((dateValues.max.getTime() - dateValues.min.getTime())/(oneDay)));
+			var activities = ["date", $("#activity1").val(), $("#activity2").val()];
+
+			getData(end, period, activities, createScatterplot);
+		}
+		function formatDate(date) {
+			var d = new Date(date),
+			month = '' + (d.getMonth() + 1),
+			day = '' + d.getDate(),
+			year = d.getFullYear();
+
+			if (month.length < 2) month = '0' + month;
+			if (day.length < 2) day = '0' + day;
+
+			return [year, month, day].join('-');
+		}
+		$( document ).ready(function() {
+			if ($(".svg-container").length){
+				$(".svg-container").remove();
+			}
+
+
+			var activities = ["date", "Steps", "Calories"];
+
+			$("#date-slider").dateRangeSlider(
+				{
+					bounds:{
+						min: new Date(2016, 0, 1),
+						max: new Date()
+					},
+					defaultValues:{
+						min: new Date(2016, 0, 1),
+						max: new Date()
+					},
+					arrows:false,
+					step:{
+				    days: 1
+				}
+			});
+			formToScatterplot();
+	  	});
+		$( window ).resize(function() {
+		//$( "#scatterplot" ).attr("width", window.width);
+		});
+		$("#date-slider").bind("valuesChanging", function(e, data){
+		  formToScatterplot();
+		});
+</script>
+<script>
+
+function transition() {
+  d3.selectAll("path")
+      .data(function() {
+        var d = layers1;
+        layers1 = layers0;
+        return layers0 = d;
+      })
+    .transition()
+      .duration(2500)
+      .attr("d", area);
+}
+
+// Inspired by Lee Byron's test data generator.
+function bumpLayer(n) {
+  function bump(a) {
+    var x = 1 / (.1 + Math.random()),
+        y = 2 * Math.random() - .5,
+        z = 10 / (.1 + Math.random());
+    for (var i = 0; i < n; i++) {
+      var w = (i / n - y) * z;
+      a[i] += x * Math.exp(-w * w);
+    }
+  }
+
+  var a = [], i;
+  for (i = 0; i < n; ++i) a[i] = 0;
+  for (i = 0; i < 5; ++i) bump(a);
+  return a.map(function(d, i) { return {x: i, y: Math.max(0, d)}; });
+}
+
+</script>
+</body>
+</html>

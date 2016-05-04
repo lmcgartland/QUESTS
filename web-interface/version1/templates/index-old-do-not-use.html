@@ -1,0 +1,341 @@
+<html>
+<head>
+	<title>Scatterplot</title>
+	<script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script src="/static/jQRangeSlider-5.7.2/jQDateRangeSlider-min.js" charset="utf-8"></script>
+	<script src="/static/jQRangeSlider-5.7.2/lib/jquery.mousewheel.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="/static/jQRangeSlider-5.7.2/css/iThing.css">
+	<style>
+		body {
+			font: 15px sans-serif;
+			background-color: #101010;
+			color: white;
+			font-family: "Helvetica";
+			font-weight: lighter;
+			background: #303030; /* Old browsers */
+			background: -moz-linear-gradient(top, #303030 0%, #000000 100%); /* FF3.6-15 */
+			background: -webkit-linear-gradient(top, #303030 0%,#000000 100%); /* Chrome10-25,Safari5.1-6 */
+			background: linear-gradient(to bottom, #303030 0%,#000000 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+
+			background-attachment: fixed;
+		}
+
+		.axis path,
+		.axis line {
+			fill: none;
+			stroke: #444;
+			stroke-width: 2px;
+			stroke-linecap: round;
+			shape-rendering: crispEdges;
+		}
+
+		.dot {
+			-webkit-svg-shadow: 0 0 7px rgba(0,0,0,.7);
+			-webkit-filter: drop-shadow( -5px -5px 5px rgba(0,0,0,.7) );
+			filter: drop-shadow( -5px -5px 5px rgba(0,0,0,.7) );
+		}
+
+		.tooltip {
+			position: absolute;
+			width: auto;
+			height: auto;
+			pointer-events: none;
+			color: white;
+			background-color: #333;
+			padding: 5px;
+		}
+		.svg-container {
+			display: inline-block;
+			position: relative;
+			width: 100%;
+			height: 40vw;
+			vertical-align: top;
+			overflow: hidden;
+		}
+		.svg-content-responsive {
+			display: inline-block;
+			position: absolute;
+			top: 10px;
+			left: 0;
+		}
+		.plot-container{
+			margin-right: 10%;
+			margin-left: 10%;
+			margin-top: 2%;
+		}
+		.title-container{
+			font-size: 30px;
+			font-weight: 900;
+			letter-spacing: 10px;
+			text-transform: uppercase;
+			width: 100%;
+			text-align: center;
+			margin-top: 40px;
+
+		}
+		.controls-container{
+			margin-right: 10%;
+			margin-left: 10%;
+		}
+		#other-controls{
+			text-align: center;
+			display: block;
+			margin: 20px;
+		}
+		.focus-style{
+  font-size: 14px;
+  appearance: none;
+  box-shadow: none;
+  border-radius: none;
+  padding: 4px;
+  border: solid 4px #666;
+  transition: border 0.3s;
+  border-radius: 2px;
+  background-color: #222;
+  color: white;
+		}
+		.focus-style:focus{
+  			border: solid 4px #CCC;
+		}
+		.lighter-text{
+			font-weight: 100;
+		}
+		.label{
+			text-transform: uppercase;
+		}
+	</style>
+</head>
+<body>
+    <!--{% block content %}
+    {% endblock %}-->
+    <div class="title-container">STEPS vs CALORIES</div>
+    <div class="plot-container"></div>
+    <div class="controls-container">
+    	<div id="date-slider"></div>
+    	<div id="other-controls">
+    		<input type="text" placeholder="Activity 1" class="focus-style" id="activity1" value="Steps">
+<input type="text" placeholder="Activity 2" class="focus-style" id="activity2" value="Calories">
+<button class="focus-style" style="" onclick="formToScatterplot()">></button>
+    	</div>
+    </div>
+    <script type="text/javascript">
+    	function returnData(d, activities, number){
+    		var value = d[activities[number]];
+    		if (value == undefined || isNaN(value) || value == ""){
+    			value = 0;
+    		}
+    		return parseFloat(value);
+    	}
+    	function createScatterplot(data, activities){
+    		if ($(".svg-container").length){
+	  		$(".svg-container").remove();
+	  	}
+    		//console.log(data);
+    		//console.log(activities);
+    		$(".title-container").html(activities[1]+"<span class='lighter-text'> vs </span>"+activities[2]);
+
+    		var margin = {top: 20, right: 20, bottom: 30, left: 50},
+    		width = $(window).width() - margin.left - margin.right,
+    		height = $(window).height()*.8- margin.top - margin.bottom;
+
+		/* 
+		 * value accessor - returns the value to encode for a given data object.
+		 * scale - maps value to a visual display encoding, such as a pixel position.
+		 * map function - maps from data value to display value
+		 * axis - sets up axis
+		 */ 
+
+		// setup x 
+		var xValue = function(d) { return returnData(d, activities, 1);}, // data -> value
+		    xScale = d3.scale.linear().range([0, width]), // value -> display
+		    xMap = function(d) { return xScale(xValue(d));}, // data -> display
+		    xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+
+		// setup y
+		var yValue = function(d) { return returnData(d, activities, 2);}, // data -> value
+		    yScale = d3.scale.linear().range([height, 0]), // value -> display
+		    yMap = function(d) { return yScale(yValue(d));}, // data -> display
+		    yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+		var dateValue = function(d) { return d[activities[0]];}; // data -> value
+
+		// setup fill color
+		var cValue = function(d) { return d.Manufacturer;},
+		color = d3.scale.category10();
+
+		// add the graph canvas to the body of the webpage
+		var svg = d3.select(".plot-container")
+		.append("div")
+		   .classed("svg-container", true) //container class to make it responsive
+		   .append("svg")
+		   //responsive SVG needs these 2 attributes and no width and height attr
+		   .attr("preserveAspectRatio", "xMinYMin meet")
+		   .attr("viewBox", "0 0 "+((width + margin.left + margin.right))+" "+((height + margin.top + margin.bottom)))
+			   //class to make it responsive
+			   .classed("svg-content-responsive", true)
+			   .attr("id", "scatterplot")
+			   .append("g")
+			   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+		/*var svg = d3.select("body").append("svg")
+		    .attr("width", width + margin.left + margin.right)
+		    .attr("height", height + margin.top + margin.bottom)
+		    .attr("id", "scatterplot")
+		  .append("g")
+		  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");*/
+
+		// add the tooltip area to the webpage
+		var tooltip = d3.select("body").append("div")
+		.attr("class", "tooltip")
+		.style("opacity", 0);
+
+		
+		xScale.domain([d3.min(data, xValue), d3.max(data, xValue)]);
+		yScale.domain([d3.min(data, yValue), d3.max(data, yValue)]);
+		// x-axis
+		svg.append("g")
+		.attr("class", "x axis")
+		.attr("transform", "translate(0," + height + ")")
+		.attr("fill", "white")
+		.call(xAxis)
+		.append("text")
+		.attr("class", "label")
+		.attr("x", width)
+		.attr("y", -6)
+		.style("text-anchor", "end")
+		.text(activities[1]);
+
+		svg.append("g")
+		.attr("class", "y axis")
+		.attr("fill", "white")
+		.call(yAxis)
+		.append("text")
+		.attr("class", "label")
+		.attr("transform", "rotate(-90)")
+		.attr("y", 6)
+		.attr("dy", ".71em")
+		.style("text-anchor", "end")
+		.text(activities[2]);
+		// draw dots
+		svg.selectAll(".dot")
+		.data(data)
+		.enter().append("circle")
+		.attr("class", "dot")
+		.attr("r", 10)
+		.attr("cx", xMap)
+		.attr("cy", yMap)
+		.attr("test", function(d) { return dateValue(d)})
+	      .attr("fill", "#5AD427")//.style("fill", function(d) { return color(cValue(d));})
+	      .on("mouseover", function(d) {
+	      	tooltip.transition()
+	      	.duration(200)
+	      	.style("opacity", .9);
+	      	tooltip.html(dateValue(d)+"<br>"+activities[1]+": "+xValue(d)+"<br>"+activities[2] +": "+yValue(d))
+	      	.style("left", (d3.event.pageX + 5) + "px")
+	      	.style("top", (d3.event.pageY - 28) + "px");
+	      })
+	      .on("mouseout", function(d) {
+	      	tooltip.transition()
+	      	.duration(500)
+	      	.style("opacity", 0);
+	      });
+
+
+	      svg.selectAll(".dot")
+	      	.each(function (d, i) {
+	      		var t = i/data.length;
+            	colour = "rgb(0"+", "+parseInt(255 * t)+", "+parseInt(255 * (1-t))+")";
+            	//console.log(colour);
+              d3.select(this).attr("fill", colour);   
+            
+          });
+	      /*svg.selectAll(".dot")
+	      	.each(function (d, i) {
+	      		if(i===0){
+	      			if (dateValue(d) == undefined){
+	      				this.remove()
+	      			}
+	      		}            
+          });*/
+	      	
+	  }
+	  function setupScatterplot(end, period, activities){
+	  	$.ajaxSettings.traditional = true;
+	  	$.ajax({
+	  		url: "../snippets/",
+	  		data: {
+	  			end: end,
+	  			period: period,
+	  			activity: activities,
+
+	  		},
+	  		success: function( data ) {
+	  			if (data[0]=={}){
+	  				data[0].splice(0, 1)
+	  			}
+	  			createScatterplot(data, activities);
+	  		}
+	  	});
+	  }
+	  function formToScatterplot(){
+	  	
+	  	var dateValues = $("#date-slider").dateRangeSlider("values");
+	  	var end = formatDate(dateValues.max);
+	  	var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
+		var period = Math.round(Math.abs((dateValues.max.getTime() - dateValues.min.getTime())/(oneDay)));
+	  	var activities = ["date", $("#activity1").val(), $("#activity2").val()];
+
+	  	setupScatterplot(end, period, activities);
+	  }
+	  function formatDate(date) {
+	  	var d = new Date(date),
+	  	month = '' + (d.getMonth() + 1),
+	  	day = '' + d.getDate(),
+	  	year = d.getFullYear();
+
+	  	if (month.length < 2) month = '0' + month;
+	  	if (day.length < 2) day = '0' + day;
+
+	  	return [year, month, day].join('-');
+	  }
+	  $( document ).ready(function() {
+	  	console.log( "ready!" );
+	  	if ($(".svg-container").length){
+	  		$(".svg-container").remove();
+	  	}
+	  	
+
+	  	var activities = ["date", "Steps", "Calories"];
+
+	  	$("#date-slider").dateRangeSlider(
+	  	{
+	  		bounds:{
+	  			min: new Date(2016, 0, 1),
+	  			max: new Date()
+	  		},
+	  		defaultValues:{
+	  			min: new Date(2016, 0, 1),
+	  			max: new Date()
+	  		},
+	  		arrows:false,
+	  		step:{
+			    days: 1
+			}
+	  	});
+	  	formToScatterplot();
+	  });
+	  $( window ).resize(function() {
+  		//$( "#scatterplot" ).attr("width", window.width);
+  	});
+	$("#date-slider").bind("valuesChanging", function(e, data){
+	  formToScatterplot();
+	});
+</script>
+
+</body>
+</html>

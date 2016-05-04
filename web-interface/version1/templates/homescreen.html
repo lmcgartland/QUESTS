@@ -1,0 +1,53 @@
+<html>
+<head>
+	<title>QUESTS</title>
+	<link rel="stylesheet" type="text/css" href="/static/jquery-ui.css">
+	<link rel="stylesheet" type="text/css" href="/static/plots.css">
+	<script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	
+	<style type="text/css">
+	.about{
+		padding-left: 20%;
+		padding-right: 20%;
+		position: relative;
+		top: -100px;
+	}
+	</style>
+</head>
+<body>
+<div style="display: flex; align-items: center; justify-content: center; height: 60vh;">
+	<div class="apps">
+		<div class="app" id="overview-link"><h4>RINGS</h4></div>
+		<div class="app" id="line-link"><h4>LINE</h4></div>
+		<div class="app" id="scatter-link"><h4>SCATTER</h4></div>
+	</div>	
+</div>
+<div class="about">
+	<h1>QUESTS</h1>
+	<h3>Mission</h3>
+	<p>
+		The goal of this project is to explore the quantified self data and derive meaningful insights to help optimize our lives.
+Techonology has enabled greater quantitative data collection about people than ever before, but this data never gets used by the people who generate it. This project allows users to use their own data and create unique visualizations and put their data to work for them.  QUESTS stands for <b>Q</b>uantified <b>U</b>ser <b>E</b>asy <b>S</b>elf <b>T</b>racking <b>S</b>ystem.
+	</p>
+	<h3>Methodology</h3>
+	<p>
+		QUESTS allows users to input data from a variety of sources and consolidate the data into a database organized by date and activitiy. Currently supported sources include Selfstats, Microsoft Health, Last FM, and internet enabled scales. This raw data is processed by a python script into the organized database. The script extracts stats for each day from the raw data and then places them into a JSON object for that day. A collection of JSON files make up the database.
+	</p>
+	<p>
+		For that database, a web based API was built using Django as a framework. This allows the site to specifically query different date ranges and activities and get that data specifically from the database in a JSON format. The API can even filter by weekday. Django not only powers the backend for the API, but also powers the website pages.
+	</p>
+	<p>
+		The webpages were built using web libraries such as JQuery and D3. JQuery powers the interactive elements of the pages while D3 is used to generate the visualizations.
+	</p>
+	<h3>Sources</h3>
+	<p>
+		QUESTS uses a variety of sources, and will be adding more. Currently application usage from personal computers is obtained through Selfstats. Sleep, steps, exercise, and calorie data is obtained through Microsoft Health. Weight data is through an internet connected Wii Balance Board with a custom script attached. Song data is through Last FM.
+	</p>
+</div>
+
+<script src="/static/nav.js"></script>
+</body>
+</html>

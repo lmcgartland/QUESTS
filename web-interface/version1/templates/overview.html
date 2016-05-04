@@ -1,0 +1,401 @@
+<html>
+<head>
+	<title>RINGS</title>
+	<link rel="stylesheet" type="text/css" href="/static/plots.css">
+	<link rel="stylesheet" type="text/css" href="/static/jQRangeSlider-5.7.2/css/iThing.css">
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+	<link rel="stylesheet" type="text/css" href="/static/jquery-ui.css">
+	<script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script src="/static/jQRangeSlider-5.7.2/jQDateRangeSlider-min.js" charset="utf-8"></script>
+	
+
+
+	<script>
+		$(function() {
+			$( "#format" ).buttonset();
+		});
+	</script>
+</head>
+<body>
+<!--{% block content %}
+	{% endblock %}-->
+	<div class="title-container"></div>
+	<div class="plot-container"></div>
+	<div class="controls-container">
+		<div id="date-slider"></div>
+		<div id="other-controls">
+			<div id="format">
+				<input type="checkbox" class="daybox" id="mon"><label for="mon">M</label>
+				<input type="checkbox" class="daybox" id="tue"><label for="tue">T</label>
+				<input type="checkbox" class="daybox" id="wed"><label for="wed">W</label>
+				<input type="checkbox" class="daybox" id="thr"><label for="thr">T</label>
+				<input type="checkbox" class="daybox" id="fri"><label for="fri">F</label>
+				<input type="checkbox" class="daybox" id="sat"><label for="sat">S</label>
+				<input type="checkbox" class="daybox" id="sun"><label for="sun">S</label>
+			</div>
+			<input type="text" placeholder="Activity 1" style="border: solid 4px white;" class="focus-style" id="activity1" value="Songs">
+			<input type="text" placeholder="Activity 2" style="border: solid 4px #12ADB9;" class="focus-style" id="activity2" value="Calories">
+			<input type="text" placeholder="Activity 3" style="border: solid 4px #EC008C;" class="focus-style" id="activity3" value="Safari">
+			<button class="focus-style" style="" onclick="formToScatterplot()">></button>
+		</div>
+	</div>
+
+		<script src="/static/nav.js"></script>
+		<script src="/static/activity-picker.js"></script>
+
+	<script type="text/javascript">
+		function returnData(d, activities, number){
+			var value = d[activities[number]];
+			if (value == undefined || isNaN(value) || value == ""){
+				value = 0;
+			}
+			return parseFloat(value);
+		}
+		function addUnits(activityName){
+			var a = activityName;
+			if (a != "Miles" && a != "clicks" &&  a != "Steps" &&  a != "Calories" &&  a != "weight" &&  a != "Songs" && a != "keystrokes"){
+				return activityName + " (sec)";
+			}else{
+				return activityName;
+			}
+			 
+		}
+		function createScatterplot(data, activities){
+			if ($(".svg-container").length){
+				$(".svg-container").remove();
+			}
+
+
+
+			var tooltip = d3.select("body").append("div")
+			.attr("class", "tooltip")
+			.style("opacity", 0);
+			$(".title-container").html(activities[1]+", "+activities[2]+", "+activities[3]);
+
+			var margin = {top: 0, right: 0, bottom: 40, left: 0},
+		width = 200;//$(window).width() - margin.left - margin.right,
+		height = 200;//$(window).height()*.8- margin.top - margin.bottom;
+
+		// setup x 
+		var xValue = function(d) { return returnData(d, activities, 1);}, // data -> value
+		xScale = d3.scale.linear().range([0, width]), // value -> display
+		xMap = function(d) { return xScale(xValue(d));}, // data -> display
+		xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+
+		// setup y
+		var yValue = function(d) { return returnData(d, activities, 2);}, // data -> value
+		yScale = d3.scale.linear().range([height, 0]), // value -> display
+		yMap = function(d) { return yScale(yValue(d));}, // data -> display
+		yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+		var zValue = function(d) { return returnData(d, activities, 3);}; // data -> value
+		/*zScale = d3.scale.linear().range([0, width]), // value -> display
+		zMap = function(d) { return xScale(xValue(d));}, // data -> display
+		zAxis = d3.svg.axis().scale(xScale).orient("bottom");*/
+
+
+		var dateValue = function(d) { return d[activities[0]];}; // data -> value
+
+		// setup fill color
+		var cValue = function(d) { return d.Manufacturer;},
+		color = d3.scale.category10();
+
+
+		for (var i = data.length - 1; i >= 0; i--) {
+		//console.log();
+		if (dateValue(data[i])==undefined){
+			data.splice(i, 1);
+		}
+	}
+
+
+		//data = [data[0],];
+		var activity1Max = d3.max(data, xValue);
+		var activity2Max = d3.max(data, yValue);
+		var activity3Max = d3.max(data, zValue);
+
+		// add the graph canvas to the body of the webpage
+		var svg = d3.select(".plot-container")
+		.append("div")
+			.classed("svg-container", true); //container class to make it responsive
+
+			var ogData = data;
+			for (var i = 0; i < ogData.length; i ++){
+				var containerSVG = d3.select(".svg-container")
+				.append("svg")
+			//responsive SVG needs these 2 attributes and no width and height attr
+			.attr("preserveAspectRatio", "xMinYMin meet")
+			.attr("viewBox", "0 0 "+((width + margin.left + margin.right))+" "+((height + margin.top + margin.bottom)))
+			//class to make it responsive
+			.classed("svg-content-responsive", true)
+			.attr("id", "overview")
+			.append("g")
+			.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+
+
+
+			data = [ogData[i]];		
+
+			var radius = Math.min(width, height) / 3,
+			spacing = .09;
+
+
+			var outerArc = d3.svg.arc()
+			.startAngle(0)
+			.endAngle(function(d) { return findPercentage(xValue(d), activity1Max) * 2 * Math.PI; })
+			.innerRadius(function(d) { return /*xValue(d) * */radius; })
+			.outerRadius(function(d) { return /*(xValue(d) + spacing) * radius*/(1.2+spacing)*radius; })
+			.cornerRadius(6);
+
+			var middleArc = d3.svg.arc()
+			.startAngle(0)
+			.endAngle(function(d) { return findPercentage(yValue(d), activity2Max) * 2 * Math.PI; })
+			.innerRadius(function(d) { return /*xValue(d) * */radius/1.5; })
+			.outerRadius(function(d) { return /*(xValue(d) + spacing) * radius*/radius; })
+			.cornerRadius(6);
+
+			var innerArc = d3.svg.arc()
+			.startAngle(0)
+			.endAngle(function(d) { return findPercentage(zValue(d), activity3Max) * 2 * Math.PI; })
+			.innerRadius(function(d) { return /*xValue(d) * */radius/3; })
+			.outerRadius(function(d) { return /*(xValue(d) + spacing) * radius*/radius/1.5; })
+			.cornerRadius(6);
+
+			var innerDot = d3.svg.arc()
+			.startAngle(0)
+			.endAngle(function(d) { return 2 * Math.PI; })
+			.innerRadius(function(d) { return /*xValue(d) * */0; })
+			.outerRadius(function(d) { return /*(xValue(d) + spacing) * radius*/radius/5; })
+			.cornerRadius(6);
+			
+			function findPercentage(value, total) {
+				// body...
+				if (total == 0){
+					return 0;
+				}else{
+					return value/total;
+				}
+			}
+			/*var svg = d3.select("body").append("svg")
+			    .attr("width", width)
+			    .attr("height", height)
+			  .append("g")
+			  */
+
+			  var field = containerSVG.selectAll("g")
+			  .data(data)
+			  .enter().append("g")
+
+
+
+			  field.append("path")
+			  .attr("class", "outerArc");
+			  field.append("path")
+			  .attr("class", "middleArc");
+			  field.append("path")
+			  .attr("class", "innerArc");
+			  field.append("path")
+			  .attr("class", "innerDot");
+
+
+
+			  field.select(".outerArc")
+			  .attr("d", outerArc)
+			  .style("fill", "white")
+			  .on("mouseover", function(d) {
+			  	tooltip.transition()
+			  	.duration(200)
+			  	.style("opacity", .9);
+			  	tooltip.html(addUnits(activities[1])+": "+xValue(d))
+			  	.style("left", (d3.event.pageX + 5) + "px")
+			  	.style("top", (d3.event.pageY - 28) + "px");
+			  })
+			  .on("mouseout", function(d) {
+			  	tooltip.transition()
+			  	.duration(500)
+			  	.style("opacity", 0);
+				});//function(d) { return color(d.value); });
+
+			  field.select(".middleArc")
+			  .attr("d", middleArc)
+		      .style("fill", "#12ADB9")
+		      .on("mouseover", function(d) {
+			  	tooltip.transition()
+			  	.duration(200)
+			  	.style("opacity", .9);
+			  	tooltip.html(addUnits(activities[2])+": "+yValue(d))
+			  	.style("left", (d3.event.pageX + 5) + "px")
+			  	.style("top", (d3.event.pageY - 28) + "px");
+			  })
+			  .on("mouseout", function(d) {
+			  	tooltip.transition()
+			  	.duration(500)
+			  	.style("opacity", 0);
+				});//function(d) { return color(d.value); });
+
+		      field.select(".innerArc")
+		      .attr("d", innerArc)
+		      .style("fill", "#EC008C")
+		      .on("mouseover", function(d) {
+			  	tooltip.transition()
+			  	.duration(200)
+			  	.style("opacity", .9);
+			  	tooltip.html(addUnits(activities[3])+": "+zValue(d))
+			  	.style("left", (d3.event.pageX + 5) + "px")
+			  	.style("top", (d3.event.pageY - 28) + "px");
+			  })
+			  .on("mouseout", function(d) {
+			  	tooltip.transition()
+			  	.duration(500)
+			  	.style("opacity", 0);
+				});//function(d) { return color(d.value); });
+
+		      field.select(".innerDot")
+		      .attr("d", innerDot);
+		      //.style("fill", "blue");//function(d) { return color(d.value); });
+		      field.append("text")
+		      .attr("class", "label")
+		      .attr("x", 0)
+		      .attr("y", 0)
+		      .style("text-align", "center")
+		      .text(dateValue)
+		      .attr("transform", "translate(" + -width / 5.1 + "," + (height / 2 + 10) + ")");
+
+
+
+		  }
+		  d3.selectAll(".innerDot")
+		  .each(function (d, i) {
+
+		  	var t = i/ogData.length;
+		  	var color = d3.scale.linear()
+		    	.domain([0, 1])
+		    	.range(["#0000FF", "#00FF00"]);
+		  	
+				//console.log(colour);
+				d3.select(this).attr("fill", color(t));
+			});
+		/*svg.selectAll(".dot")
+		.each(function (d, i) {
+		if(i===0){
+		if (dateValue(d) == undefined){
+		this.remove()
+		}
+		}            
+	});*/
+
+}
+function setupScatterplot(end, period, activities){
+	$.ajaxSettings.traditional = true;
+	$.ajax({
+		url: "../snippets/",
+		data: {
+			end: end,
+			period: period,
+			activity: activities,
+			day: day,
+		},
+		success: function( data ) {
+			if (data[0]=={}){
+				data[0].splice(0, 1)
+			}
+			createScatterplot(data, activities);
+		}
+	});
+}
+function formToScatterplot(){
+
+	var dateValues = $("#date-slider").dateRangeSlider("values");
+	var end = formatDate(dateValues.max);
+			var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
+			var period = Math.round(Math.abs((dateValues.max.getTime() - dateValues.min.getTime())/(oneDay)));
+			var activities = ["date", $("#activity1").val(), $("#activity2").val(), $("#activity3").val()];
+
+			day = [];
+			var mon = $("#mon:checked").val(),
+			tue = $("#tue:checked").val(),
+			wed = $("#wed:checked").val(),
+			thr = $("#thr:checked").val(),
+			fri = $("#fri:checked").val(),
+			sat = $("#sat:checked").val(),
+			sun = $("#sun:checked").val();
+			if (mon == "on"){
+				day.push(0);
+			}
+			if (tue == "on"){
+				day.push(1);
+			}
+			if (wed == "on"){
+				day.push(2);
+			}
+			if (thr == "on"){
+				day.push(3);
+			}
+			if (fri == "on"){
+				day.push(4);
+			}
+			if (sat == "on"){
+				day.push(5);
+			}
+			if (sun == "on"){
+				day.push(6);
+			}
+			if (day.length == 0){
+				day = [0,1,2,3,4,5,6]
+			}
+
+			setupScatterplot(end, period, activities, day);
+		}
+
+		function formatDate(date) {
+			var d = new Date(date),
+			month = '' + (d.getMonth() + 1),
+			day = '' + d.getDate(),
+			year = d.getFullYear();
+
+			if (month.length < 2) month = '0' + month;
+			if (day.length < 2) day = '0' + day;
+
+			return [year, month, day].join('-');
+		}
+		$( document ).ready(function() {
+			console.log( "ready!" );
+			if ($(".svg-container").length){
+				$(".svg-container").remove();
+			}
+
+
+
+			$("#date-slider").dateRangeSlider(
+			{
+				bounds:{
+					min: new Date(2016, 0, 1),
+					max: new Date()
+				},
+				defaultValues:{
+					min: new Date(2016, 0, 1),
+					max: new Date(2016, 0, 21)
+				},
+				arrows:false,
+				step:{
+					days: 1
+				}/*,
+				valueLabels: "change"*/
+			});
+			formToScatterplot();
+			$(".daybox").on( "click", function(){
+				formToScatterplot();
+			});
+		});
+		$( window ).resize(function() {
+		//$( "#scatterplot" ).attr("width", window.width);
+	});
+		$("#date-slider").bind("valuesChanging", function(e, data){
+			formToScatterplot();
+		});
+	</script>
+</body>
+</html>
